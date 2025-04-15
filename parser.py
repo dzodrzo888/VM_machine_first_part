@@ -7,7 +7,7 @@ class Parser:
         self.label_count = 0
         self.current_file = ""
 
-    def command_parser(self, line: str) -> list:
+        def command_parser(self, line: str) -> list:
         if line.startswith("//") or line == "":
             return
         # Remove inline comments
@@ -21,6 +21,157 @@ class Parser:
             self.arithmetic_logic(line)
         elif "push" in line or "pop" in line:
             self.push_pop_execute(line)
+        elif line.startswith("label"):
+            self.handle_label(line)
+        elif line.startswith("goto"):
+            self.handle_goto(line)
+        elif line.startswith("if-goto"):
+            self.handle_if_goto(line)
+        elif line.startswith("function"):
+            self.handle_function(line)
+        elif line.startswith("call"):
+            self.handle_call(line)
+        elif line.startswith("return"):
+            self.handle_return()
+
+    def handle_label(self, line: str):
+        _, label = line.split()
+        self.file_struc.append(f"({self.current_file}${label})")
+
+    def handle_goto(self, line: str):
+        _, label = line.split()
+        self.file_struc.extend([
+            f"@{self.current_file}${label}",
+            "0;JMP"
+        ])
+
+    def handle_if_goto(self, line: str):
+        _, label = line.split()
+        self.file_struc.extend([
+            "@SP",
+            "M=M-1",
+            "A=M",
+            "D=M",
+            f"@{self.current_file}${label}",
+            "D;JNE"
+        ])
+
+    def handle_function(self, line: str):
+        _, function_name, num_locals = line.split()
+        self.file_struc.append(f"({function_name})")
+        for _ in range(int(num_locals)):
+            self.file_struc.extend([
+                "@0",
+                "D=A",
+                "@SP",
+                "A=M",
+                "M=D",
+                "@SP",
+                "M=M+1"
+            ])
+
+    def handle_call(self, line: str):
+        _, function_name, num_args = line.split()
+        return_address = f"RETURN_{self.label_count}"
+        self.label_count += 1
+
+        self.file_struc.extend([
+            f"@{return_address}",
+            "D=A",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            "@LCL",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            "@ARG",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            "@THIS",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            "@THAT",
+            "D=M",
+            "@SP",
+            "A=M",
+            "M=D",
+            "@SP",
+            "M=M+1",
+            f"@{int(num_args) + 5}",
+            "D=A",
+            "@SP",
+            "D=M-D",
+            "@ARG",
+            "M=D",
+            "@SP",
+            "D=M",
+            "@LCL",
+            "M=D",
+            f"@{function_name}",
+            "0;JMP",
+            f"({return_address})"
+        ])
+
+    def handle_return(self):
+        self.file_struc.extend([
+            "@LCL",
+            "D=M",
+            "@R13",
+            "M=D",
+            "@5",
+            "A=D-A",
+            "D=M",
+            "@R14",
+            "M=D",
+            "@SP",
+            "M=M-1",
+            "A=M",
+            "D=M",
+            "@ARG",
+            "A=M",
+            "M=D",
+            "@ARG",
+            "D=M+1",
+            "@SP",
+            "M=D",
+            "@R13",
+            "AM=M-1",
+            "D=M",
+            "@THAT",
+            "M=D",
+            "@R13",
+            "AM=M-1",
+            "D=M",
+            "@THIS",
+            "M=D",
+            "@R13",
+            "AM=M-1",
+            "D=M",
+            "@ARG",
+            "M=D",
+            "@R13",
+            "AM=M-1",
+            "D=M",
+            "@LCL",
+            "M=D",
+            "@R14",
+            "A=M",
+            "0;JMP"
+        ])
 
     def push_pop_execute(self, line: str):
         parts = line.split()
