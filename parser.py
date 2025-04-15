@@ -7,7 +7,7 @@ class Parser:
         self.label_count = 0
         self.current_file = ""
 
-        def command_parser(self, line: str) -> list:
+    def command_parser(self, line: str) -> list:
         if line.startswith("//") or line == "":
             return
         # Remove inline comments
